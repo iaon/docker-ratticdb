@@ -1,26 +1,42 @@
-FROM debian:wheezy
+FROM ubuntu:precise
 
-ADD https://github.com/tildaslash/RatticWeb/archive/v1.2.1.zip /opt/v1.2.1.zip
+# Install dependencies
+RUN apt-get update &&  \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install unzip python python-pip \
+    python-dev gcc libsqlite3-dev libcurl4-openssl-dev libldap2-dev \
+    libsasl2-dev libxml2-dev libxslt-dev apache2 libapache2-mod-wsgi mysql-server \
+    supervisor libmysqlclient-dev && \
+    apt-get clean && \
+    rm /var/lib/apt/lists/*_*
 
-RUN apt-get update 
-RUN apt-get install -y unzip python python-pip \
-python-dev gcc libsqlite3-dev \
-libcurl4-openssl-dev libldap2-dev \
-libsasl2-dev libxml2-dev libxslt-dev apache2 libapache2-mod-wsgi
+# Download rattic
+ENV RATTIC_VERSION 1.2.2
+ADD https://github.com/tildaslash/RatticWeb/archive/v${RATTIC_VERSION}.tar.gz /opt/rattic.tar.gz
 
-RUN cd /opt/ && unzip v1.2.1.zip && rm -f v1.2.1.zip
+# Unpack rattic
+RUN mkdir -p /opt/rattic && tar xvfz /opt/rattic.tar.gz -C /opt/rattic --strip-components=1
 
-ADD ./requirements-sqlite.txt /opt/RatticWeb-1.2.1/
-ADD ./local.cfg /opt/RatticWeb-1.2.1/conf/local.cfg
-ADD ./rattic.conf /etc/apache2/conf.d/sites-enabled/rattic
-ADD ./start-apache.sh /start-apache.sh
+# Copy config
+ADD ./local.dist.cfg /opt/rattic/conf/local.dist.cfg
+RUN ln -s ../../../srv/rattic/conf/local.cfg /opt/rattic/conf/local.cfg
+ADD ./rattic.conf /etc/apache2/sites-available/rattic
+RUN ln -s ../../../srv/apache.conf /etc/apache2/sites-enabled/rattic
+# Install dependencies 
+RUN cd /opt/rattic/ && pip install -r requirements-mysql.txt
 
-RUN cd /opt/RatticWeb-1.2.1/ && pip install -r requirements-sqlite.txt
-RUN cd /opt/RatticWeb-1.2.1/ && ./manage.py syncdb --noinput && ./manage.py migrate --all
-RUN cd /opt/RatticWeb-1.2.1/ && mkdir static && ./manage.py collectstatic -c --noinput
-RUN cd /opt/RatticWeb-1.2.1/ && ./manage.py demosetup
-RUN chmod +x /start-apache.sh && chown www-data /opt/RatticWeb-1.2.1/ && chown www-data:www-data /opt/RatticWeb-1.2.1/rattic.db
+# Copy run script
+ADD ./run.sh /run.sh
+RUN chmod 755 /run.sh
 
+# Copy supervisor config
+ADD ./apache.foreground.sh /etc/apache2/foreground.sh
+ADD ./supervisord.apache.conf /etc/supervisor/conf.d/apache.conf
+ADD ./supervisord.mysql.conf /etc/supervisor/conf.d/mysql.conf
+
+# Expose http port
 EXPOSE 80
 
-CMD ["/start-apache.sh"]
+# Default command
+CMD ["/run.sh"]
+
+VOLUME /srv

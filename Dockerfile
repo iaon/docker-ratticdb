@@ -10,7 +10,7 @@ RUN apt-get update &&  \
     rm /var/lib/apt/lists/*_*
 
 # Download rattic
-ENV RATTIC_VERSION 1.2.2
+ENV RATTIC_VERSION 1.3.1
 ADD https://github.com/tildaslash/RatticWeb/archive/v${RATTIC_VERSION}.tar.gz /opt/rattic.tar.gz
 
 # Unpack rattic

@@ -5,7 +5,7 @@ RUN apt-get update &&  \
     DEBIAN_FRONTEND=noninteractive apt-get -y install unzip python python-pip \
     python-dev gcc libsqlite3-dev libcurl4-openssl-dev libldap2-dev \
     libsasl2-dev libxml2-dev libxslt-dev apache2 libapache2-mod-wsgi mysql-server \
-    supervisor libmysqlclient-dev && \
+    supervisor libmysqlclient-dev patch && \
     apt-get clean && \
     rm /var/lib/apt/lists/*_*
 
@@ -22,6 +22,8 @@ RUN ln -s ../../../srv/rattic/conf/local.cfg /opt/rattic/conf/local.cfg
 ADD ./rattic.conf /etc/apache2/sites-available/rattic
 RUN ln -s ../../../srv/apache.conf /etc/apache2/sites-enabled/rattic
 # Install dependencies 
+ADD ./req-base.patch /opt/rattic/req-base.patch
+RUN cd /opt/rattic/ && /usr/bin/patch < req-base.patch
 RUN cd /opt/rattic/ && pip install -r requirements-mysql.txt
 
 # Copy run script
